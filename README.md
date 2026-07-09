@@ -32,20 +32,24 @@ so often and has to be rebooted by hand. This bot does it for you.
 
 ## ⚙️ Deploy on Dokploy
 
-A **Compose** app pointing at this repo. The `docker-compose.yml` uses
-`network_mode: host` (needed to reach the ONU on a different subnet and to
-expose the dashboard directly on the LAN).
+An **Application** (Dockerfile build) pointing at this repo — same pattern as the
+other homelab bots. Configuration:
 
-Set in **Environment** (Dokploy), at a minimum:
+- **Build type:** Dockerfile (`./Dockerfile`).
+- **Port:** publish `8099` (container) as `8099` on the host in **host** mode, so
+  the dashboard is reachable on the LAN (`http://<host>:8099`) even while the WAN
+  is down — no reverse proxy in the path.
+- **Environment** (at a minimum):
 
-```
-ONU_PASS=***            # the ONU password (secret — never in the repo)
-DISCORD_WEBHOOK_URL=***  # optional
-```
+  ```
+  ONU_PASS=***            # the ONU password (secret — never in the repo)
+  DISCORD_WEBHOOK_URL=***  # optional
+  ```
 
-Everything else has sensible defaults (see `.env.example`).
+  Everything else has sensible defaults (see `.env.example`).
 
-> **Network requirement:** the host must route to `192.168.77.1`. Verify with
+> **Network requirement:** the host must route to `192.168.77.1`. The container
+> reaches the ONU through the host's routing (egress NAT). Verify with
 > `ping -c1 192.168.77.1` from the host before deploying.
 
 ## 🧪 Validate without dropping the internet

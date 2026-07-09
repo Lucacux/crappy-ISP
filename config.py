@@ -52,7 +52,7 @@ DRY_RUN             = _bool("DRY_RUN", False)              # simula, no reinicia
 
 # ── Dashboard LAN ─────────────────────────────────────────────────────
 DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "0.0.0.0")
-DASHBOARD_PORT = _int("DASHBOARD_PORT", 8090)
+DASHBOARD_PORT = _int("DASHBOARD_PORT", 8099)
 
 # ── Notificaciones ────────────────────────────────────────────────────
 # Discord: flush diferido (se envía cuando vuelve el WAN).

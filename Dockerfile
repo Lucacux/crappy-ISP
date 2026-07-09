@@ -15,6 +15,6 @@ COPY . .
 VOLUME ["/app/data"]
 
 # Dashboard LAN.
-EXPOSE 8090
+EXPOSE 8099
 
 CMD ["python", "app.py"]
