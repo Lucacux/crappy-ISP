@@ -1,65 +1,68 @@
 # 🛰️ crappy-ISP
 
-Watchdog casero que **reinicia automáticamente el ONU/EPON** cuando se cae
-internet, con trazabilidad que funciona **aunque no haya WAN**.
+A homemade watchdog that **automatically reboots the ONU/EPON** when the internet
+goes down, with traceability that works **even when there's no WAN**.
 
-Pensado para un ONU V-SOL/ZTE (probado en un ZTE **D401**) cuyo panel se cuelga
-cada tanto y hay que reiniciarlo a mano. Este bot lo hace solo.
+Built for a V-SOL/ZTE ONU (tested on a ZTE **D401**) whose web panel hangs every
+so often and has to be rebooted by hand. This bot does it for you.
 
-## 🧠 Cómo funciona
+## 🧠 How it works
 
-1. **Detección liviana**: cada ~30 s hace un *TCP-connect* a `8.8.8.8:53`,
-   `1.1.1.1:443`, etc. (más confiable que un ICMP ping a través de NAT y sin
-   privilegios raw-socket en Docker). Con **debounce**: exige varios fallos
-   seguidos antes de declarar la caída, para no reaccionar a un microcorte.
-2. **Reboot robusto vía navegador headless** (Playwright): replica el flujo
-   humano en el panel — completa usuario/clave, **lee el IdentCode del DOM** (es
-   un "anti-bot" puramente client-side) y lo tipea, entra y aprieta *Reboot*.
-   Toma **screenshots de cada paso** (traza visual).
-3. **Salvaguardas** para no empeorar las cosas:
-   - **Cooldown** entre reboots (default 20 min: el ONU tarda en re-sincronizar).
-   - **Tope de reboots por ventana** (default 3 en 6 h): si reiniciar no
-     arregla, probablemente sea un corte real del ISP → solo monitorea.
-   - **`REQUIRE_ONU_UP`**: si el ONU ni siquiera responde (apagón), no reinicia
-     a ciegas.
-4. **Trazabilidad sin WAN** (3 capas):
-   - **Dashboard web LAN** (`http://<host>:8090`): estado en vivo + historial,
-     accesible desde el celu en el WiFi de casa **durante** el corte.
-   - **Flush diferido a Discord**: bufferiza los eventos y los manda al webhook
-     **cuando vuelve** internet (post-mortem: cayó / reboot / volvió).
-   - **ntfy opcional**: push local instantáneo si tenés un server ntfy en la LAN.
+1. **Lightweight detection**: every ~30 s it does a *TCP-connect* to `8.8.8.8:53`,
+   `1.1.1.1:443`, etc. (more reliable than an ICMP ping across NAT, and needs no
+   raw-socket privileges in Docker). With **debounce**: it requires several
+   consecutive failures before declaring an outage, so it won't react to a blip.
+2. **Robust reboot via a headless browser** (Playwright): it replays the human
+   flow on the panel — fills in username/password, **reads the IdentCode from the
+   DOM** (a purely client-side "anti-bot") and types it, logs in and clicks
+   *Reboot*. Takes **screenshots of every step** (visual trace).
+3. **Safeguards** so it doesn't make things worse:
+   - **Cooldown** between reboots (default 20 min: the ONU takes a while to
+     re-sync).
+   - **Max reboots per window** (default 3 in 6 h): if rebooting doesn't help,
+     it's probably a real ISP outage → it just monitors.
+   - **`REQUIRE_ONU_UP`**: if the ONU itself doesn't respond (power cut), it
+     won't reboot blindly.
+4. **Traceability without WAN** (3 layers):
+   - **LAN web dashboard** (`http://<host>:8090`): live status + history,
+     reachable from your phone on the home Wi-Fi **during** the outage.
+   - **Deferred Discord flush**: it buffers events and sends them to the webhook
+     **when the internet comes back** (post-mortem: down / reboot / recovered).
+   - **Optional ntfy**: instant local push if you run an ntfy server on the LAN.
 
-## ⚙️ Deploy en Dokploy
+## ⚙️ Deploy on Dokploy
 
-App tipo **Compose** apuntando a este repo. El `docker-compose.yml` usa
-`network_mode: host` (necesario para alcanzar el ONU en otra subred y para
-exponer el dashboard directo en la LAN).
+A **Compose** app pointing at this repo. The `docker-compose.yml` uses
+`network_mode: host` (needed to reach the ONU on a different subnet and to
+expose the dashboard directly on the LAN).
 
-Cargá en **Environment** (Dokploy), como mínimo:
+Set in **Environment** (Dokploy), at a minimum:
 
 ```
-ONU_PASS=***            # la clave del ONU (secreto — nunca al repo)
-DISCORD_WEBHOOK_URL=***  # opcional
+ONU_PASS=***            # the ONU password (secret — never in the repo)
+DISCORD_WEBHOOK_URL=***  # optional
 ```
 
-El resto tiene defaults sensatos (ver `.env.example`).
+Everything else has sensible defaults (see `.env.example`).
 
-> **Requisito de red:** el host debe rutear a `192.168.77.1`. Verificá con
-> `ping -c1 192.168.77.1` desde el host antes de desplegar.
+> **Network requirement:** the host must route to `192.168.77.1`. Verify with
+> `ping -c1 192.168.77.1` from the host before deploying.
 
-## 🧪 Validar sin cortar internet
+## 🧪 Validate without dropping the internet
 
-- **Localizar el login/reboot sin reiniciar**: `DRY_RUN=1` → el bot hace todo el
-  flujo (login incluido) y localiza el botón Reboot, pero **no lo aprieta**.
-- **Probar el mecanismo de login**: `ONU_PASS=... python3 tools/login_probe.py`
-  (no reinicia nada; sólo valida auth).
+- **Locate the login/reboot flow without rebooting**: `DRY_RUN=1` → the bot runs
+  the whole flow (login included) and locates the Reboot button, but **doesn't
+  click it**.
+- **Test the login mechanism**: `ONU_PASS=... python3 tools/login_probe.py`
+  (reboots nothing; only validates auth).
 
-## 🔒 Seguridad
+## 🔒 Security
 
-- La password del ONU va por env (Dokploy/`.env` gitignored). Nunca al repo.
-- El panel del ONU es HTTP plano en la LAN; este bot no lo expone al WAN.
-- El dashboard es de solo lectura y sin credenciales — mantenelo en LAN.
+- The ONU password is passed via env (Dokploy / gitignored `.env`). Never in the
+  repo.
+- The ONU panel is plain HTTP on the LAN; this bot does not expose it to the WAN.
+- The dashboard is read-only and unauthenticated — keep it on the LAN.
 
 ## 🧰 Stack
 
-Python · asyncio · Playwright (Chromium headless) · aiohttp (dashboard)
+Python · asyncio · Playwright (headless Chromium) · aiohttp (dashboard)
