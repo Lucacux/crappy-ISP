@@ -53,6 +53,32 @@ async def _goto_retry(page, url: str, label: str):
     raise RuntimeError(f"goto {label} falló tras {config.PW_NAV_RETRIES} intentos: {last}")
 
 
+async def _reboot_mechanism(scope) -> bool:
+    """True si el scope (page/frame) tiene el mecanismo de reboot del firmware.
+
+    En este ZTE el botón Reboot (type=button) sólo abre un modal custom cuyo
+    confirmCallback hace: setValue('IF_ACTION','devrestart'); setValue('flag','1');
+    getObj('fSubmit').submit();  — por eso reproducimos ESO directamente, sin el
+    modal (clickear el botón no reinicia; sólo abre el diálogo).
+    """
+    try:
+        return bool(await scope.evaluate(
+            "() => (typeof setValue==='function' && typeof getObj==='function' && "
+            "!!(document.getElementById('fSubmit')||document.forms['fSubmit']) && "
+            "!!document.getElementById('IF_ACTION'))"
+        ))
+    except Exception:
+        return False
+
+
+async def _submit_reboot(scope):
+    """Ejecuta el reboot igual que el confirmCallback del firmware (bypass del modal)."""
+    await scope.evaluate(
+        "() => { setValue('IF_ACTION','devrestart'); setValue('flag','1'); "
+        "getObj('fSubmit').submit(); }"
+    )
+
+
 async def _find_reboot_control(scope):
     """Busca el control de Reboot en un page o frame. Devuelve un locator o None."""
     selectors = [
@@ -147,7 +173,14 @@ async def reboot_onu(shot_dir: str) -> dict:
             await page.wait_for_timeout(1200)
             result["shots"].append(await _shot(page, shot_dir, "3_reboot_page"))
 
-            # 6) Localizar el botón Reboot (en el page o en algún frame).
+            # 6) Ubicar el scope (page/frame) con el mecanismo de reboot del firmware.
+            scope = page if await _reboot_mechanism(page) else None
+            if scope is None:
+                for fr in page.frames:
+                    if await _reboot_mechanism(fr):
+                        scope = fr
+                        break
+            # El botón sólo se usa como evidencia/confirmación de que estamos bien.
             ctrl = await _find_reboot_control(page)
             if ctrl is None:
                 for fr in page.frames:
@@ -155,29 +188,48 @@ async def reboot_onu(shot_dir: str) -> dict:
                     if ctrl is not None:
                         break
 
-            if ctrl is None:
-                result["detail"] = ("No encontré el botón Reboot en la página. "
-                                    "Revisar screenshot 3_reboot_page para ajustar el selector.")
+            if scope is None and ctrl is None:
+                result["detail"] = ("No encontré ni el botón ni el mecanismo de reboot. "
+                                    "Revisar screenshot 3_reboot_page.")
                 return result
 
             if config.DRY_RUN:
-                try:
-                    await ctrl.scroll_into_view_if_needed(timeout=3000)
-                except Exception:
-                    pass
                 result["shots"].append(await _shot(page, shot_dir, "4_dryrun_found_button"))
                 result["ok"] = True
-                result["detail"] = "DRY_RUN: botón Reboot localizado, NO se hizo click."
+                result["detail"] = (
+                    "DRY_RUN: página de reboot OK — "
+                    + ("mecanismo devrestart presente (fSubmit/IF_ACTION), "
+                       if scope else "botón presente, ")
+                    + "NO se ejecutó."
+                )
                 return result
 
-            # Click real → reboot.
-            await ctrl.click()
+            # Reboot real: reproducir el confirmCallback del firmware (sin modal).
+            if scope is not None:
+                try:
+                    await _submit_reboot(scope)
+                except Exception:
+                    pass   # la navegación/reboot puede abortar el evaluate: esperado
+            elif ctrl is not None:
+                # Fallback (no debería hacer falta): click al botón.
+                try:
+                    await ctrl.click()
+                except Exception:
+                    pass
             await page.wait_for_timeout(3000)
-            result["shots"].append(await _shot(page, shot_dir, "4_after_reboot_click"))
+            try:
+                result["shots"].append(await _shot(page, shot_dir, "4_after_reboot"))
+            except Exception:
+                pass
 
-            result["reboot_request"] = captured[-1] if captured else None
+            # ¿Se disparó el POST de reboot correcto (con IF_ACTION=devrestart)?
+            reboot_posts = [c for c in captured if "devrestart" in (c.get("post") or "")]
+            result["reboot_request"] = (reboot_posts[-1] if reboot_posts
+                                        else (captured[-1] if captured else None))
             result["ok"] = True
-            result["detail"] = "Reboot enviado al ONU."
+            result["detail"] = ("Reboot enviado (IF_ACTION=devrestart confirmado en el POST)."
+                                if reboot_posts else
+                                "Submit de reboot ejecutado (no se pudo confirmar el POST).")
             return result
 
         except Exception as e:
