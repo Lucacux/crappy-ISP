@@ -62,7 +62,7 @@ async def flush_discord(store: st.Store):
             for i, chunk in enumerate(chunks):
                 payload = {
                     "embeds": [{
-                        "title": "🛰️ crappy-ISP — reporte de conectividad"
+                        "title": "🛰️ ISP Uplink Guardian — reporte de conectividad"
                                  + (f" ({i+1}/{len(chunks)})" if len(chunks) > 1 else ""),
                         "description": chunk,
                         "color": 0x3498db,

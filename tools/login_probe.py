@@ -49,7 +49,7 @@ def looks_like_login(html: str) -> bool:
 
 def main() -> int:
     s = requests.Session()
-    s.headers["User-Agent"] = "crappy-ISP-probe/1.0"
+    s.headers["User-Agent"] = "isp-uplink-guardian-probe/1.0"
 
     # 1) GET del login (cookies iniciales + confirmar que es la página esperada)
     try:

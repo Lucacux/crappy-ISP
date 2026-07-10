@@ -15,7 +15,7 @@ PAGE = """<!doctype html>
 <html lang="es"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>crappy-ISP · watchdog</title>
+<title>ISP Uplink Guardian · watchdog</title>
 <style>
 :root{color-scheme:dark light}
 *{box-sizing:border-box}
@@ -49,7 +49,7 @@ code{background:#222a35;padding:1px 5px;border-radius:5px}
 <body>
 <header>
  <span class="dot" id="hdot"></span>
- <div><h1>crappy-ISP · watchdog del ONU</h1>
+ <div><h1>ISP Uplink Guardian · watchdog del ONU</h1>
  <div class="sub" id="hsub">cargando…</div></div>
 </header>
 <div class="wrap">

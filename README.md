@@ -1,4 +1,4 @@
-# 🛰️ crappy-ISP
+# 🛰️ ISP Uplink Guardian
 
 A homemade watchdog that **automatically reboots the ONU/EPON** when the internet
 goes down, with traceability that works **even when there's no WAN**.
@@ -24,7 +24,7 @@ so often and has to be rebooted by hand. This bot does it for you.
    - **`REQUIRE_ONU_UP`**: if the ONU itself doesn't respond (power cut), it
      won't reboot blindly.
 4. **Traceability without WAN** (3 layers):
-   - **LAN web dashboard** (`http://<host>:8090`): live status + history,
+   - **LAN web dashboard** (`http://<host>:8099`): live status + history,
      reachable from your phone on the home Wi-Fi **during** the outage.
    - **Deferred Discord flush**: it buffers events and sends them to the webhook
      **when the internet comes back** (post-mortem: down / reboot / recovered).

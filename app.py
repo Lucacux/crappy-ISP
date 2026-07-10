@@ -1,4 +1,4 @@
-"""crappy-ISP — watchdog que reinicia el ONU cuando se cae internet.
+"""ISP Uplink Guardian — watchdog que reinicia el ONU cuando se cae internet.
 
 Loop principal (asyncio):
   · Cada CHECK_INTERVAL: prueba WAN (TCP-connect liviano) con debounce.
@@ -79,7 +79,7 @@ async def do_reboot(store: st.Store, manual: bool = False):
 async def _run_reboot(store: st.Store, reboot_onu, manual: bool):
     store.add_event(st.REBOOT_START,
                     "Reiniciando el ONU" + (" [DRY_RUN]" if config.DRY_RUN else "") + "…")
-    await notifier.push_ntfy("crappy-ISP", "Reiniciando el ONU por caída de internet", "default")
+    await notifier.push_ntfy("ISP Uplink Guardian", "Reiniciando el ONU por caída de internet", "default")
 
     try:
         res = await reboot_onu(config.SHOT_DIR)
