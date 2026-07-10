@@ -5,6 +5,9 @@ aplicación; en local, en un archivo .env (gitignored).
 """
 import os
 
+# Marcador de build para verificar que el auto-deploy (push→webhook→rebuild) llegó.
+DEPLOY_MARKER = "2026-07-10-autodeploy-github-provider"
+
 
 def _int(name: str, default: int) -> int:
     try:
