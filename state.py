@@ -12,6 +12,16 @@ from collections import deque
 
 import config
 
+# Zona horaria para los timestamps mostrados. Usamos zoneinfo (con el paquete
+# `tzdata` de requirements) en vez de la TZ del sistema: la imagen de Playwright
+# no trae la base IANA de Argentina y los timestamps caían a UTC (+3h).
+try:
+    from zoneinfo import ZoneInfo
+    _TZ = ZoneInfo(config.TZ)
+except Exception:
+    from datetime import timezone, timedelta
+    _TZ = timezone(timedelta(hours=-3))   # fallback: Argentina no aplica DST
+
 # Tipos de evento
 WAN_DOWN      = "wan_down"
 WAN_UP        = "wan_up"
@@ -68,7 +78,7 @@ class Store:
     def add_event(self, etype: str, msg: str, extra: dict | None = None) -> dict:
         ev = {
             "ts": time.time(),
-            "iso": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "iso": datetime.now(_TZ).strftime("%Y-%m-%d %H:%M:%S"),
             "type": etype,
             "msg": msg,
             "extra": extra or {},
